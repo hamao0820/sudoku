@@ -7,8 +7,7 @@ import (
 )
 
 func main() {
-	b := solver.NewBoard()
-	err := b.FromFile("solver/test/easy1.txt")
+	b, err := solver.FromFile("solver/test/easy1.txt")
 	fmt.Println(b.String())
 	if err != nil {
 		panic(err)

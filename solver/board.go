@@ -14,16 +14,7 @@ func NewBoard() *Board {
 	return &board
 }
 
-func (b *Board) FromArray(array [9][9]int) error {
-	for y := 0; y < 9; y++ {
-		for x := 0; x < 9; x++ {
-			b[y][x] = array[y][x]
-		}
-	}
-	return nil
-}
-
-func (b *Board) FromFile(filename string) error {
+func FromFile(filename string) (*Board, error) {
 	/*
 		入力ファイル例:
 		000200100
@@ -39,15 +30,16 @@ func (b *Board) FromFile(filename string) error {
 	*/
 	file, err := os.Open(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
+	b := NewBoard()
 	for y := 0; y < 9; y++ {
 		scanner.Scan()
 		line := scanner.Text()
 		if len(line) != 9 {
-			return errors.New("invalid file format")
+			return nil, errors.New("invalid file format")
 		}
 		for x := 0; x < 9; x++ {
 			if line[x] == '0' {
@@ -55,11 +47,11 @@ func (b *Board) FromFile(filename string) error {
 			} else if '1' <= line[x] && line[x] <= '9' {
 				b[y][x] = int(line[x] - 48)
 			} else {
-				return errors.New("invalid file format")
+				return nil, errors.New("invalid file format")
 			}
 		}
 	}
-	return nil
+	return b, nil
 }
 
 func (b *Board) IsEmpty(y, x int) bool {
