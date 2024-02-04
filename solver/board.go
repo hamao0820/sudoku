@@ -7,14 +7,7 @@ import (
 	"os"
 )
 
-type Cell struct {
-	Value   int
-	IsFixed bool
-}
-
-type Board struct {
-	Cells [9][9]Cell
-}
+type Board [9][9]int
 
 func NewBoard() *Board {
 	board := Board{}
@@ -24,10 +17,7 @@ func NewBoard() *Board {
 func (b *Board) FromArray(array [9][9]int) error {
 	for y := 0; y < 9; y++ {
 		for x := 0; x < 9; x++ {
-			b.Cells[y][x].Value = array[y][x]
-			if array[y][x] != 0 {
-				b.Cells[y][x].IsFixed = true
-			}
+			b[y][x] = array[y][x]
 		}
 	}
 	return nil
@@ -61,10 +51,9 @@ func (b *Board) FromFile(filename string) error {
 		}
 		for x := 0; x < 9; x++ {
 			if line[x] == '0' {
-				b.Cells[y][x].Value = 0
+				b[y][x] = 0
 			} else if '1' <= line[x] && line[x] <= '9' {
-				b.Cells[y][x].Value = int(line[x] - 48)
-				b.Cells[y][x].IsFixed = true
+				b[y][x] = int(line[x] - 48)
 			} else {
 				return errors.New("invalid file format")
 			}
@@ -74,13 +63,13 @@ func (b *Board) FromFile(filename string) error {
 }
 
 func (b *Board) IsEmpty(y, x int) bool {
-	return b.Cells[y][x].Value == 0
+	return b[y][x] == 0
 }
 
 func (b *Board) IsFull() bool {
 	for y := 0; y < 9; y++ {
 		for x := 0; x < 9; x++ {
-			if b.Cells[y][x].Value == 0 {
+			if b[y][x] == 0 {
 				return false
 			}
 		}
@@ -97,16 +86,16 @@ func (b *Board) IsSolved() bool {
 
 func (b *Board) IsLegal(y, x, value int) bool {
 	for i := 0; i < 9; i++ {
-		if i != x && b.Cells[y][i].Value == value {
+		if i != x && b[y][i] == value {
 			return false
 		}
-		if i != y && b.Cells[i][x].Value == value {
+		if i != y && b[i][x] == value {
 			return false
 		}
 	}
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 3; j++ {
-			if (i != y%3 || j != x%3) && b.Cells[y/3*3+i][x/3*3+j].Value == value {
+			if (i != y%3 || j != x%3) && b[y/3*3+i][x/3*3+j] == value {
 				return false
 			}
 		}
@@ -117,10 +106,10 @@ func (b *Board) IsLegal(y, x, value int) bool {
 func (b *Board) Verify() bool {
 	for y := 0; y < 9; y++ {
 		for x := 0; x < 9; x++ {
-			if b.Cells[y][x].Value == 0 {
+			if b[y][x] == 0 {
 				continue
 			}
-			if !b.IsLegal(y, x, b.Cells[y][x].Value) {
+			if !b.IsLegal(y, x, b[y][x]) {
 				return false
 			}
 		}
@@ -132,8 +121,8 @@ func (b *Board) String() string {
 	str := ""
 	for y := 0; y < 9; y++ {
 		for x := 0; x < 9; x++ {
-			if b.Cells[y][x].Value != 0 {
-				str += fmt.Sprint(b.Cells[y][x].Value)
+			if b[y][x] != 0 {
+				str += fmt.Sprint(b[y][x])
 			} else {
 				str += "･"
 			}

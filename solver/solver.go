@@ -15,11 +15,11 @@ func Backtrack(b *Board) bool {
 					continue
 				}
 
-				b.Cells[y][x].Value = value
+				b[y][x] = value
 				if Backtrack(b) {
 					return true
 				}
-				b.Cells[y][x].Value = 0
+				b[y][x] = 0
 			}
 			return false
 		}

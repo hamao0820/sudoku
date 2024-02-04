@@ -33,38 +33,38 @@ func TestFromArray(t *testing.T) {
 		t.Fatal(e)
 	}
 	b2 := NewBoard()
-	b2.Cells[0][3].Value = 2
-	b2.Cells[0][6].Value = 1
-	b2.Cells[1][0].Value = 1
-	b2.Cells[1][1].Value = 4
-	b2.Cells[1][2].Value = 5
-	b2.Cells[1][4].Value = 9
-	b2.Cells[2][1].Value = 6
-	b2.Cells[2][3].Value = 8
-	b2.Cells[2][8].Value = 5
-	b2.Cells[3][3].Value = 4
-	b2.Cells[4][0].Value = 4
-	b2.Cells[4][2].Value = 1
-	b2.Cells[4][3].Value = 6
-	b2.Cells[4][5].Value = 2
-	b2.Cells[5][2].Value = 2
-	b2.Cells[5][3].Value = 1
-	b2.Cells[5][4].Value = 8
-	b2.Cells[5][7].Value = 3
-	b2.Cells[5][8].Value = 9
-	b2.Cells[6][1].Value = 2
-	b2.Cells[6][6].Value = 6
-	b2.Cells[6][8].Value = 7
-	b2.Cells[7][5].Value = 8
-	b2.Cells[7][7].Value = 5
-	b2.Cells[8][3].Value = 5
-	b2.Cells[8][7].Value = 2
-	b2.Cells[8][8].Value = 3
+	b2[0][3] = 2
+	b2[0][6] = 1
+	b2[1][0] = 1
+	b2[1][1] = 4
+	b2[1][2] = 5
+	b2[1][4] = 9
+	b2[2][1] = 6
+	b2[2][3] = 8
+	b2[2][8] = 5
+	b2[3][3] = 4
+	b2[4][0] = 4
+	b2[4][2] = 1
+	b2[4][3] = 6
+	b2[4][5] = 2
+	b2[5][2] = 2
+	b2[5][3] = 1
+	b2[5][4] = 8
+	b2[5][7] = 3
+	b2[5][8] = 9
+	b2[6][1] = 2
+	b2[6][6] = 6
+	b2[6][8] = 7
+	b2[7][5] = 8
+	b2[7][7] = 5
+	b2[8][3] = 5
+	b2[8][7] = 2
+	b2[8][8] = 3
 
 	for y := 0; y < 9; y++ {
 		for x := 0; x < 9; x++ {
-			if b1.Cells[y][x].Value != b2.Cells[y][x].Value {
-				t.Errorf("Cells[%d][%d].Value = %d, want %d", y, x, b1.Cells[y][x].Value, b2.Cells[y][x].Value)
+			if b1[y][x] != b2[y][x] {
+				t.Errorf("Cells[%d][%d] = %d, want %d", y, x, b1[y][x], b2[y][x])
 			}
 		}
 	}
@@ -88,37 +88,37 @@ func TestFromFile(t *testing.T) {
 		t.Fatal(e)
 	}
 	b2 := NewBoard()
-	b2.Cells[0][3].Value = 2
-	b2.Cells[0][6].Value = 1
-	b2.Cells[1][0].Value = 1
-	b2.Cells[1][1].Value = 4
-	b2.Cells[1][2].Value = 5
-	b2.Cells[1][4].Value = 9
-	b2.Cells[2][1].Value = 6
-	b2.Cells[2][3].Value = 8
-	b2.Cells[2][8].Value = 5
-	b2.Cells[3][3].Value = 4
-	b2.Cells[4][0].Value = 4
-	b2.Cells[4][2].Value = 1
-	b2.Cells[4][3].Value = 6
-	b2.Cells[4][5].Value = 2
-	b2.Cells[5][2].Value = 2
-	b2.Cells[5][3].Value = 1
-	b2.Cells[5][4].Value = 8
-	b2.Cells[5][7].Value = 3
-	b2.Cells[5][8].Value = 9
-	b2.Cells[6][1].Value = 2
-	b2.Cells[6][6].Value = 6
-	b2.Cells[6][8].Value = 7
-	b2.Cells[7][5].Value = 8
-	b2.Cells[7][7].Value = 5
-	b2.Cells[8][3].Value = 5
-	b2.Cells[8][7].Value = 2
-	b2.Cells[8][8].Value = 3
+	b2[0][3] = 2
+	b2[0][6] = 1
+	b2[1][0] = 1
+	b2[1][1] = 4
+	b2[1][2] = 5
+	b2[1][4] = 9
+	b2[2][1] = 6
+	b2[2][3] = 8
+	b2[2][8] = 5
+	b2[3][3] = 4
+	b2[4][0] = 4
+	b2[4][2] = 1
+	b2[4][3] = 6
+	b2[4][5] = 2
+	b2[5][2] = 2
+	b2[5][3] = 1
+	b2[5][4] = 8
+	b2[5][7] = 3
+	b2[5][8] = 9
+	b2[6][1] = 2
+	b2[6][6] = 6
+	b2[6][8] = 7
+	b2[7][5] = 8
+	b2[7][7] = 5
+	b2[8][3] = 5
+	b2[8][7] = 2
+	b2[8][8] = 3
 	for y := 0; y < 9; y++ {
 		for x := 0; x < 9; x++ {
-			if b1.Cells[y][x].Value != b2.Cells[y][x].Value {
-				t.Errorf("Cells[%d][%d].Value = %d, want %d", y, x, b1.Cells[y][x].Value, b2.Cells[y][x].Value)
+			if b1[y][x] != b2[y][x] {
+				t.Errorf("Cells[%d][%d] = %d, want %d", y, x, b1[y][x], b2[y][x])
 			}
 		}
 	}
@@ -127,57 +127,57 @@ func TestFromFile(t *testing.T) {
 func TestVerify(t *testing.T) {
 	{
 		b := NewBoard()
-		b.Cells[0][0].Value = 1
-		b.Cells[0][1].Value = 2
-		b.Cells[0][2].Value = 3
-		b.Cells[0][3].Value = 4
-		b.Cells[0][4].Value = 5
-		b.Cells[0][5].Value = 6
-		b.Cells[0][6].Value = 7
-		b.Cells[0][7].Value = 8
-		b.Cells[0][8].Value = 9
+		b[0][0] = 1
+		b[0][1] = 2
+		b[0][2] = 3
+		b[0][3] = 4
+		b[0][4] = 5
+		b[0][5] = 6
+		b[0][6] = 7
+		b[0][7] = 8
+		b[0][8] = 9
 		if !b.Verify() {
 			t.Error("Verify() = false, want true")
 		}
-		b.Cells[0][1].Value = 1
+		b[0][1] = 1
 		if b.Verify() {
 			t.Error("Verify() = true, want false")
 		}
 	}
 	{
 		b := NewBoard()
-		b.Cells[0][0].Value = 1
-		b.Cells[1][0].Value = 2
-		b.Cells[2][0].Value = 3
-		b.Cells[3][0].Value = 4
-		b.Cells[4][0].Value = 5
-		b.Cells[5][0].Value = 6
-		b.Cells[6][0].Value = 7
-		b.Cells[7][0].Value = 8
-		b.Cells[8][0].Value = 9
+		b[0][0] = 1
+		b[1][0] = 2
+		b[2][0] = 3
+		b[3][0] = 4
+		b[4][0] = 5
+		b[5][0] = 6
+		b[6][0] = 7
+		b[7][0] = 8
+		b[8][0] = 9
 		if !b.Verify() {
 			t.Error("Verify() = false, want true")
 		}
-		b.Cells[1][0].Value = 1
+		b[1][0] = 1
 		if b.Verify() {
 			t.Error("Verify() = true, want false")
 		}
 	}
 	{
 		b := NewBoard()
-		b.Cells[0][0].Value = 1
-		b.Cells[0][1].Value = 2
-		b.Cells[0][2].Value = 3
-		b.Cells[1][0].Value = 4
-		b.Cells[1][1].Value = 5
-		b.Cells[1][2].Value = 6
-		b.Cells[2][0].Value = 7
-		b.Cells[2][1].Value = 8
-		b.Cells[2][2].Value = 9
+		b[0][0] = 1
+		b[0][1] = 2
+		b[0][2] = 3
+		b[1][0] = 4
+		b[1][1] = 5
+		b[1][2] = 6
+		b[2][0] = 7
+		b[2][1] = 8
+		b[2][2] = 9
 		if !b.Verify() {
 			t.Error("Verify() = false, want true")
 		}
-		b.Cells[1][1].Value = 1
+		b[1][1] = 1
 		if b.Verify() {
 			t.Error("Verify() = true, want false")
 		}
@@ -187,14 +187,14 @@ func TestVerify(t *testing.T) {
 func TestIsLegal(t *testing.T) {
 	{
 		b := NewBoard()
-		b.Cells[0][0].Value = 1
-		b.Cells[0][1].Value = 2
-		b.Cells[0][2].Value = 3
-		b.Cells[0][3].Value = 4
-		b.Cells[0][4].Value = 5
-		b.Cells[0][5].Value = 6
-		b.Cells[0][6].Value = 7
-		b.Cells[0][7].Value = 8
+		b[0][0] = 1
+		b[0][1] = 2
+		b[0][2] = 3
+		b[0][3] = 4
+		b[0][4] = 5
+		b[0][5] = 6
+		b[0][6] = 7
+		b[0][7] = 8
 		if !b.IsLegal(0, 8, 9) {
 			t.Error("IsLegal(0, 8, 9) = false, want true")
 		}
@@ -204,14 +204,14 @@ func TestIsLegal(t *testing.T) {
 	}
 	{
 		b := NewBoard()
-		b.Cells[0][0].Value = 1
-		b.Cells[1][0].Value = 2
-		b.Cells[2][0].Value = 3
-		b.Cells[3][0].Value = 4
-		b.Cells[4][0].Value = 5
-		b.Cells[5][0].Value = 6
-		b.Cells[6][0].Value = 7
-		b.Cells[7][0].Value = 8
+		b[0][0] = 1
+		b[1][0] = 2
+		b[2][0] = 3
+		b[3][0] = 4
+		b[4][0] = 5
+		b[5][0] = 6
+		b[6][0] = 7
+		b[7][0] = 8
 		if !b.IsLegal(8, 0, 9) {
 			t.Error("IsLegal(8, 0, 9) = false, want true")
 		}
@@ -221,14 +221,14 @@ func TestIsLegal(t *testing.T) {
 	}
 	{
 		b := NewBoard()
-		b.Cells[0][0].Value = 1
-		b.Cells[0][1].Value = 2
-		b.Cells[0][2].Value = 3
-		b.Cells[1][0].Value = 4
-		b.Cells[1][1].Value = 5
-		b.Cells[1][2].Value = 6
-		b.Cells[2][0].Value = 7
-		b.Cells[2][1].Value = 8
+		b[0][0] = 1
+		b[0][1] = 2
+		b[0][2] = 3
+		b[1][0] = 4
+		b[1][1] = 5
+		b[1][2] = 6
+		b[2][0] = 7
+		b[2][1] = 8
 		if !b.IsLegal(2, 2, 9) {
 			t.Error("IsLegal(2, 2, 9) = false, want true")
 		}
@@ -247,7 +247,7 @@ func TestIsFull(t *testing.T) {
 	}
 	{
 		b := NewBoard()
-		b.Cells[0][0].Value = 1
+		b[0][0] = 1
 		if b.IsFull() {
 			t.Error("IsFull() = true, want false")
 		}
@@ -256,7 +256,7 @@ func TestIsFull(t *testing.T) {
 		b := NewBoard()
 		for x := 0; x < 9; x++ {
 			for y := 0; y < 9; y++ {
-				b.Cells[x][y].Value = 1
+				b[x][y] = 1
 			}
 		}
 		if !b.IsFull() {
@@ -274,7 +274,7 @@ func TestIsSolved(t *testing.T) {
 	}
 	{
 		b := NewBoard()
-		b.Cells[0][0].Value = 1
+		b[0][0] = 1
 		if b.IsSolved() {
 			t.Error("IsSolved() = true, want false")
 		}
@@ -283,7 +283,7 @@ func TestIsSolved(t *testing.T) {
 		b := NewBoard()
 		for x := 0; x < 9; x++ {
 			for y := 0; y < 9; y++ {
-				b.Cells[x][y].Value = 1
+				b[x][y] = 1
 			}
 		}
 		if b.IsSolved() {
@@ -305,7 +305,7 @@ func TestIsSolved(t *testing.T) {
 		}
 		for y := 0; y < 9; y++ {
 			for x := 0; x < 9; x++ {
-				b.Cells[x][y].Value = b_[y][x]
+				b[x][y] = b_[y][x]
 			}
 		}
 		if !b.IsSolved() {
