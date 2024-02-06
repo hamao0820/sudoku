@@ -1,12 +1,47 @@
 package detect
 
 import (
+	"fmt"
 	"image"
-	"image/color"
 	"math"
 
 	"gocv.io/x/gocv"
 )
+
+func GetSquare(img gocv.Mat) (gocv.Mat, error) {
+	FitSize(&img, 500, 500)
+
+	gray := ToGray(img)
+	defer gray.Close()
+
+	edge := FindEdge(gray)
+	defer edge.Close()
+
+	contours, _ := FindContours(edge)
+	defer contours.Close()
+
+	min_area := float64(img.Rows()*img.Cols()) * 0.2
+	largeContours := FilterContours(contours, min_area)
+
+	convexes := GetConvexes(largeContours)
+
+	polies := GetPolygons(largeContours, convexes)
+	defer polies.Close()
+
+	// 正方形に近いものを選ぶ
+	selectedIndex, _ := SelectNearestSquareIndex(polies)
+
+	if selectedIndex == -1 {
+		return gocv.NewMat(), fmt.Errorf("not found")
+	}
+
+	poly := fixClockwise(polies.At(selectedIndex))
+
+	warp, size := GetSquareWarpPerspectiveTransformed(img, poly)
+
+	square := warp.Region(image.Rect(0, 0, size, size))
+	return square, nil
+}
 
 func FitSize(img *gocv.Mat, h, w int) {
 	size := img.Size()
@@ -14,292 +49,195 @@ func FitSize(img *gocv.Mat, h, w int) {
 	gocv.Resize(*img, img, image.Point{}, f, f, gocv.InterpolationLinear)
 }
 
-func Edge(img gocv.Mat) gocv.Mat {
+func ToGray(img gocv.Mat) gocv.Mat {
 	gray := gocv.NewMat()
-	defer gray.Close()
 	gocv.CvtColor(img, &gray, gocv.ColorBGRToGray)
-	edgeImage := gocv.NewMat()
-	gocv.Canny(gray, &edgeImage, 50, 150)
-	return edgeImage
+	return gray
 }
 
-// def line(img, show=True, threshold=80, minLineLength=50, maxLineGap=5):
-//     edges = edge(img, False)
-//     lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold, 200, minLineLength, maxLineGap)
-//     return lines
-
-func Line(img gocv.Mat, threshold int) gocv.Mat {
-	edgeImage := Edge(img)
-	defer edgeImage.Close()
-	lines := gocv.NewMat()
-	gocv.HoughLinesP(edgeImage, &lines, 1, math.Pi/180, threshold)
-	return lines
+func FindEdge(img gocv.Mat) gocv.Mat {
+	edge := gocv.NewMat()
+	gocv.Canny(img, &edge, 50, 150)
+	return edge
 }
 
-// def contours(img, show=True):
-//     edges = edge(img, False)
-//     contours = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[1]
-//     blank = np.zeros(img.shape, np.uint8)
-//     min_area = img.shape[0] * img.shape[1] * 0.2 # 画像の何割占めるか
-//     large_contours = [c for c in contours if cv2.contourArea(c) > min_area]
-//     cv2.drawContours(blank, large_contours, -1, (0,255,0), 1)
-//     return large_contours
+func FindContours(img gocv.Mat) (gocv.PointsVector, gocv.Mat) {
+	hierarchy := gocv.NewMat()
+	contours := gocv.FindContoursWithParams(img, &hierarchy, gocv.RetrievalList, gocv.ChainApproxSimple)
+	return contours, hierarchy
+}
 
-func Contours(img gocv.Mat) (gocv.PointsVector, gocv.Mat) {
-	edges := Edge(img)
-	contours := gocv.FindContours(edges, gocv.RetrievalList, gocv.ChainApproxSimple)
-	blank := gocv.NewMatWithSize(img.Rows(), img.Cols(), gocv.MatTypeCV8U)
-	min_area := float64(img.Rows()*img.Cols()) * 0.2
-	large_contours := gocv.NewPointsVector()
+func FilterContours(contours gocv.PointsVector, min float64) gocv.PointsVector {
+	largeContours := gocv.NewPointsVector()
 	for i := 0; i < contours.Size(); i++ {
-		cnt := contours.At(i)
-		if gocv.ContourArea(cnt) > min_area {
-			large_contours.Append(cnt)
+		contour := contours.At(i)
+		if gocv.ContourArea(contour) > min {
+			largeContours.Append(contour)
 		}
 	}
-	gocv.DrawContours(&blank, large_contours, -1, color.RGBA{0, 255, 0, 255}, 1)
-	return large_contours, blank
+	return largeContours
 }
 
-// def convex(img, show=True):
-//     blank = np.copy(img)
-//     convexes = []
-//     for cnt in contours(img, False):
-//         convex = cv2.convexHull(cnt)
-//         cv2.drawContours(blank, [convex], -1, (0,255,0), 2)
-//         convexes.append(convex)
-//     return convexes
-
-func Convex(img gocv.Mat) gocv.PointsVector {
-	blank := gocv.NewMat()
-	defer blank.Close()
-	img.CopyTo(&blank)
-	contours, _ := Contours(img)
-	convexes := gocv.NewPointsVector()
+func GetConvexes(contours gocv.PointsVector) []gocv.Mat {
+	convexes := make([]gocv.Mat, contours.Size())
 	for i := 0; i < contours.Size(); i++ {
-		cnt := contours.At(i)
+		contour := contours.At(i)
+
 		convex := gocv.NewMat()
-		defer convex.Close()
-		gocv.ConvexHull(cnt, &convex, false, false)
-		convexes.Append(cnt)
+		gocv.ConvexHull(contour, &convex, true, false) // convexはcontourの部分集合のインデックス
+		convexes[i] = convex
 	}
 	return convexes
 }
 
-// def convex_poly(img, show=True):
-//     cnts = convex(img, False)
-//     blank = np.copy(img)
-//     polies = []
-//     for cnt in cnts:
-//         arclen = cv2.arcLength(cnt, True)
-//         poly = cv2.approxPolyDP(cnt, 0.02*arclen, True)
-//         cv2.drawContours(blank, [poly], -1, (0,255,0), 2)
-//         polies.append(poly)
-//     return [poly[:, 0, :] for poly in polies]
-
-func convex_poly(img gocv.Mat) gocv.PointsVector {
-	cnts := Convex(img)
-	blank := gocv.NewMat()
-	defer blank.Close()
-	img.CopyTo(&blank)
+func GetPolygons(contours gocv.PointsVector, convexes []gocv.Mat) gocv.PointsVector {
 	polies := gocv.NewPointsVector()
-	for i := 0; i < cnts.Size(); i++ {
-		cnt := cnts.At(i)
-		arclen := gocv.ArcLength(cnt, true)
-		poly := gocv.ApproxPolyDP(cnt, 0.02*arclen, true)
+	for i := 0; i < contours.Size(); i++ {
+		contour := contours.At(i)
+		converted := gocv.NewMat()
+		defer converted.Close()
+		convex := convexes[i]
+		convexContour := gocv.NewPointVector()
+		for j := 0; j < convex.Rows(); j++ {
+			convexContour.Append(contour.At(int(convex.GetIntAt(j, 0))))
+		}
+
+		arcLen := gocv.ArcLength(convexContour, true)
+		poly := gocv.ApproxPolyDP(convexContour, 0.02*arcLen, true)
 		polies.Append(poly)
 	}
-	gocv.DrawContours(&blank, polies, -1, color.RGBA{0, 255, 0, 255}, 2)
 	return polies
 }
 
-// def select_corners(img, polies):
-//     p_selected = []
-//     p_scores = []
-//     for poly in polies:
-//         choices = np.array(list(itertools.combinations(poly, 4)))
-//         scores = []
-//         # 正方形に近いものを選ぶ
-//         for c in choices:
-//             line_lens = [np.linalg.norm(c[(i + 1) % 4] - c[i]) for i in range(4)]
-//             base = cv2.contourArea(c) ** 0.5
-//             score = sum([abs(1 - l/base) ** 2 for l in line_lens])
-//             scores.append(score)
-//         idx = np.argmin(scores)
-//         p_selected.append(choices[idx])
-//         p_scores.append(scores[idx])
-//     return p_selected[np.argmin(p_scores)]
-
-func SelectCorners(img gocv.Mat, polies gocv.PointsVector) gocv.PointVector {
-	p_selected := []gocv.PointVector{}
-	p_scores := []float64{}
+func SelectNearestSquareIndex(polies gocv.PointsVector) (int, float64) {
+	selectedIndex := -1 // 選ばれたindex
+	pMinError := math.MaxFloat64
 	for i := 0; i < polies.Size(); i++ {
 		poly := polies.At(i)
-		choices := [][]image.Point{}
-		for i := 0; i < 4; i++ {
-			choices = append(choices, []image.Point{poly.At(i), poly.At((i + 1) % 4), poly.At((i + 2) % 4), poly.At((i + 3) % 4)})
+		if poly.Size() < 4 {
+			continue
 		}
-		scores := []float64{}
-		for _, c := range choices {
-			line_lens := []float64{}
-			for i := 0; i < 4; i++ {
-				a := c[(i+1)%4].Sub(c[i])
-				line_lens = append(line_lens, math.Sqrt(float64(a.X*a.X+a.Y*a.Y)))
+
+		// polyの中から4つ選ぶ
+		// 4つの点の組み合わせを全て試す
+		indices := make([]int, poly.Size())
+		for j := 0; j < poly.Size(); j++ {
+			indices[j] = j
+		}
+		errors := make([]float64, 0) // 4つの点の組み合わせごとの誤差
+		combs := make([][]int, 0)    // 4つの点の組み合わせ
+		for comb := range combinations(indices, 4, 1) {
+			combs = append(combs, comb)
+		}
+		for _, comb := range combs {
+			quadrilateral := gocv.NewPointVector()
+			for _, c := range comb {
+				quadrilateral.Append(poly.At(c))
 			}
-			base := math.Sqrt(gocv.ContourArea(gocv.NewPointVectorFromPoints(c)))
+
+			lineLens := make([]float64, 4)
+			for j := 0; j < 4; j++ {
+				lineLens[j] = math.Sqrt(math.Pow(float64(quadrilateral.At(j).X-quadrilateral.At((j+1)%4).X), 2) + math.Pow(float64(quadrilateral.At(j).Y-quadrilateral.At((j+1)%4).Y), 2))
+			}
+			base := math.Sqrt(gocv.ContourArea(quadrilateral))
 			score := 0.0
-			for _, l := range line_lens {
+			for _, l := range lineLens {
 				score += math.Pow(math.Abs(1-l/base), 2)
 			}
-			scores = append(scores, score)
+			errors = append(errors, score)
 		}
-		idx := 0
-		min_score := scores[0]
-		for i, score := range scores {
-			if score < min_score {
-				idx = i
-				min_score = score
+
+		minError := errors[0] // 4つの点の組み合わせごとの誤差の最小値
+		for _, e := range errors {
+			if e < minError {
+				minError = e
 			}
 		}
-		p_selected = append(p_selected, gocv.NewPointVectorFromPoints(choices[idx]))
-		p_scores = append(p_scores, scores[idx])
-	}
-	min_score := p_scores[0]
-	min_idx := 0
-	for i, score := range p_scores {
-		if score < min_score {
-			min_score = score
-			min_idx = i
+
+		if minError < pMinError {
+			pMinError = minError
+			selectedIndex = i
 		}
 	}
-	return p_selected[min_idx]
+	return selectedIndex, pMinError
 }
 
-// def gen_score_mat():
-//     half_a = np.fromfunction(lambda i, j: ((10 - i) ** 2) / 100.0, (10, 20), dtype=np.float32)
-//     half_b = np.rot90(half_a, 2)
-//     cell_a = np.r_[half_a, half_b]
-//     cell_b = np.rot90(cell_a)
-//     cell = np.maximum(cell_a, cell_b)
-//     return np.tile(cell, (9, 9))
+func GetSquarePerspectiveTransform(poly gocv.PointVector) (gocv.Mat, int) {
+	dst := gocv.NewPointVector()
+	defer dst.Close()
 
-func GenScoreMat() gocv.Mat {
-	half_a := gocv.NewMatWithSize(10, 20, gocv.MatTypeCV32F)
-	for i := 0; i < 10; i++ {
-		for j := 0; j < 20; j++ {
-			half_a.SetFloatAt(i, j, float32((10-i)*(10-i))/100.0)
+	lineLensSum := 0.0
+	for j := 0; j < 4; j++ {
+		lineLensSum += math.Sqrt(math.Pow(float64(poly.At(j).X-poly.At((j+1)%4).X), 2) + math.Pow(float64(poly.At(j).Y-poly.At((j+1)%4).Y), 2))
+	}
+	size := int(lineLensSum / 4)
+	dst.Append(image.Pt(0, 0))
+	dst.Append(image.Pt(0, size))
+	dst.Append(image.Pt(size, size))
+	dst.Append(image.Pt(size, 0))
+
+	return gocv.GetPerspectiveTransform(poly, dst), size
+}
+
+func GetSquareWarpPerspectiveTransformed(img gocv.Mat, poly gocv.PointVector) (gocv.Mat, int) {
+	perspective, size := GetSquarePerspectiveTransform(poly)
+	defer perspective.Close()
+	warp := gocv.NewMat()
+
+	gocv.WarpPerspective(img, &warp, perspective, image.Pt(img.Cols(), img.Rows()))
+	return warp, size
+}
+
+func fixClockwise(poly gocv.PointVector) gocv.PointVector {
+	points := poly.ToPoints()
+	// 重心を求める
+	center := image.Pt(0, 0)
+	for _, p := range points {
+		center.X += p.X
+		center.Y += p.Y
+	}
+	center.X /= len(points)
+	center.Y /= len(points)
+
+	// 重心からの角度を求める
+	angles := make([]float64, len(points))
+	for i, p := range points {
+		angles[i] = math.Atan2(float64(p.Y-center.Y), float64(p.X-center.X))
+	}
+
+	// 角度でソート
+	for i := 0; i < len(points); i++ {
+		for j := i + 1; j < len(points); j++ {
+			if angles[i] < angles[j] {
+				angles[i], angles[j] = angles[j], angles[i]
+				points[i], points[j] = points[j], points[i]
+			}
 		}
 	}
-	half_b := gocv.NewMat()
-	defer half_b.Close()
-	gocv.Rotate(half_a, &half_b, gocv.Rotate180Clockwise)
-	cell_a := gocv.NewMat()
-	defer cell_a.Close()
-	gocv.Vconcat(half_a, half_b, &cell_a)
-	cell_b := gocv.NewMat()
-	defer cell_b.Close()
-	gocv.Rotate(cell_a, &cell_b, gocv.Rotate90Clockwise)
-	cell := gocv.NewMat()
-	defer cell.Close()
-	gocv.Max(cell_a, cell_b, &cell)
-	score_mat := gocv.NewMatWithSize(cell.Rows()*9, cell.Cols()*9, gocv.MatTypeCV32F)
-	defer score_mat.Close()
-	for i := 0; i < 9; i++ {
-		for j := 0; j < 9; j++ {
-			roi := cell.Region(image.Rect(0, 0, cell.Cols(), cell.Rows()))
-			for k := 0; k < cell.Rows(); k++ {
-				for l := 0; l < cell.Cols(); l++ {
-					score_mat.SetFloatAt(i*cell.Rows()+k, j*cell.Cols()+l, roi.GetFloatAt(k, l))
+
+	points = append(points[3:], points[:3]...) // 0, 1, 2, 3 -> 3, 0, 1, 2
+
+	return gocv.NewPointVectorFromPoints(points)
+}
+
+func combinations(list []int, choose, buf int) (c chan []int) {
+	c = make(chan []int, buf)
+	go func() {
+		defer close(c)
+		switch {
+		case choose == 0:
+			c <- []int{}
+		case choose == len(list):
+			c <- list
+		case len(list) < choose:
+			return
+		default:
+			for i := 0; i < len(list); i++ {
+				for subComb := range combinations(list[i+1:], choose-1, buf) {
+					c <- append([]int{list[i]}, subComb...)
 				}
 			}
 		}
-	}
-	return score_mat
+	}()
+	return
 }
-
-// SCALE = 0.7
-// def get_get_fit_score(img, x):
-//     # 入力リサイズ
-//     img = cv2.resize(img, (int(img.shape[1] * SCALE), int(img.shape[0] * SCALE)), interpolation=cv2.INTER_AREA)
-//     img_size = (img.shape[0] * img.shape[1]) ** 0.5
-//     x = np.int32(x * SCALE)
-
-//     # 線分化
-//     poly_length = cv2.arcLength(x, True)
-//     lines = line(img, False, int(poly_length / 12), int(poly_length / 200))
-//     line_mat = np.zeros(img.shape, np.uint8)
-//     for x1, y1, x2, y2 in lines[:, 0]:
-//         cv2.line(line_mat, (x1, y1), (x2, y2), 255, 1)
-//     line_mat = line_mat[:, :, 0]
-
-//     # 矩形の外をマスクアウト
-//     img_size = (img.shape[0] * img.shape[1]) ** 0.5
-//     mask = np.zeros(line_mat.shape, np.uint8)
-//     cv2.fillConvexPoly(mask, x, 1)
-//     kernel = np.ones((int(img_size / 10), int(img_size / 10)), np.uint8)
-//     mask = cv2.erode(mask, kernel, iterations=1)
-//     line_mat[np.where(mask == 0)] = 0
-
-//     # スコア
-//     score_mat = gen_score_mat()
-
-//     def get_fit_score(x):
-//         img_pnts = np.float32(x).reshape(4, 2)
-//         img_pnts *= SCALE
-//         score_size = score_mat.shape[0]
-//         score_pnts = np.float32([[0, 0], [0, score_size], [score_size, score_size], [score_size, 0]])
-
-//         transform = cv2.getPerspectiveTransform(score_pnts, img_pnts)
-//         score_t = cv2.warpPerspective(score_mat, transform, (img.shape[1], img.shape[0]))
-
-//         res = line_mat * score_t
-//         return -np.average(res[np.where(res > 255 * 0.1)])
-
-//     return get_fit_score
-
-// 	poly_length := gocv.ArcLength(x_int32, true)
-// 	lines := line(img_resized, int(poly_length/12))
-// 	line_mat := gocv.NewMatWithSize(img_resized.Rows(), img_resized.Cols(), gocv.MatTypeCV8U)
-// 	defer line_mat.Close()
-// 	for i := 0; i < lines.Rows(); i++ {
-// 		line := lines.GetVeciAt(i, 0)
-// 		gocv.Line(&line_mat, image.Pt(line.Val1, line.Val2), image.Pt(line.Val3, line.Val4), color.RGBA{255, 255, 255, 255}, 1)
-// 	}
-
-// }
-
-// def convex_poly_fitted(img, show=True):
-//     polies = convex_poly(img, False)
-//     poly = select_corners(img, polies)
-//     x0 = poly.flatten()
-//     get_fit_score = get_get_fit_score(img, poly)
-//     ret = basinhopping(get_fit_score, x0, T=0.1, niter=250, stepsize=3)
-//     return ret.x.reshape(4, 2), ret.fun
-
-// func ConvexPolyFitted(img gocv.Mat) (gocv.PointVector, float64) {
-// 	polies := convex_poly(img)
-// 	poly := SelectCorners(img, polies)
-// 	x0 := poly.ToPoints()
-// 	get_fit_score := get_get_fit_score(img, poly)
-// 	ret := basinhopping(get_fit_score, x0, 0.1, 250, 3)
-// 	return gocv.NewPointVectorFromPoints(ret.X), ret.Fun
-// }
-
-// func convex_poly_fitted(img gocv.Mat) (gocv.PointVector, float64) {
-// 	polies := convex_poly(img)
-// 	poly := select_corners(img, polies)
-// 	x0 := poly.ToPoints()
-// 	get_fit_score := get_get_fit_score(img, poly)
-// 	ret := basinhopping(get_fit_score, x0, 0.1, 250, 3)
-// 	return gocv.NewPointVectorFromPoints(ret.X), ret.Fun
-// }
-
-// def normalize_corners(v):
-//     rads = []
-//     for i in range(4):
-//         a = v[(i + 1) % 4] - v[i]
-//         a = a / np.linalg.norm(a)
-//         cosv = np.dot(a, np.array([1, 0]))
-//         rads.append(math.acos(cosv))
-//     left_top = np.argmin(rads)
-//     return np.roll(v, 4 - left_top, axis=0)
