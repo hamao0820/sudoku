@@ -63,7 +63,7 @@ func main() {
 	}
 
 	// 正方形に近いものを選ぶ
-	selectedIndex := 0 // 選ばれたindex
+	selectedIndex := -1 // 選ばれたindex
 	pMinError := math.MaxFloat64
 	for i := 0; i < polies.Size(); i++ {
 		poly := polies.At(i)
@@ -111,6 +111,11 @@ func main() {
 			pMinError = minError
 			selectedIndex = i
 		}
+	}
+
+	if selectedIndex == -1 {
+		fmt.Println("not found")
+		return
 	}
 
 	poly := fixClockwise(polies.At(selectedIndex))
