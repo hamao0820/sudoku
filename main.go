@@ -2,7 +2,7 @@ package main
 
 import (
 	"image"
-	"image/color"
+	"math"
 
 	"github.com/hamao0820/sudoku/detect"
 	"gocv.io/x/gocv"
@@ -18,123 +18,152 @@ func main() {
 	defer gray.Close()
 	gocv.CvtColor(src, &gray, gocv.ColorBGRToGray)
 
-	binary := gocv.NewMat()
-	defer binary.Close()
-	gocv.Threshold(gray, &binary, 100, 255, gocv.ThresholdToZeroInv)
-	gocv.BitwiseNot(binary, &binary)
-	gocv.Threshold(gray, &binary, 0, 255, gocv.ThresholdBinary|gocv.ThresholdOtsu)
-
 	edge := gocv.NewMat()
 	defer edge.Close()
-	gocv.Canny(binary, &edge, 50, 150)
+	gocv.Canny(gray, &edge, 50, 150)
 
 	hierarchy := gocv.NewMat()
 	defer hierarchy.Close()
 	contours := gocv.FindContoursWithParams(edge, &hierarchy, gocv.RetrievalList, gocv.ChainApproxSimple)
 
+	min_area := float64(src.Rows()*src.Cols()) * 0.2
+	largeContors := gocv.NewPointsVector()
+	for i := 0; i < contours.Size(); i++ {
+		contour := contours.At(i)
+		if gocv.ContourArea(contour) > min_area {
+			largeContors.Append(contour)
+		}
+	}
+
+	convexes := make([]gocv.Mat, largeContors.Size())
+	for i := 0; i < largeContors.Size(); i++ {
+		contour := largeContors.At(i)
+
+		convex := gocv.NewMat()
+		defer convex.Close()
+		gocv.ConvexHull(contour, &convex, true, false) // convexはcontourの部分集合のインデックス
+		convexes[i] = convex
+	}
+
+	polies := gocv.NewPointsVector()
+	for i := 0; i < largeContors.Size(); i++ {
+		contour := largeContors.At(i)
+		converted := gocv.NewMat()
+		defer converted.Close()
+		convex := convexes[i]
+		convexContour := gocv.NewPointVector()
+		for j := 0; j < convex.Rows(); j++ {
+			convexContour.Append(contour.At(int(convex.GetIntAt(j, 0))))
+		}
+
+		arcLen := gocv.ArcLength(convexContour, true)
+		poly := gocv.ApproxPolyDP(convexContour, 0.02*arcLen, true)
+		polies.Append(poly)
+	}
+
+	// 正方形に近いものを選ぶ
+	selectedIndex := 0 // 選ばれたindex
+	pMinError := math.MaxFloat64
+	for i := 0; i < polies.Size(); i++ {
+		poly := polies.At(i)
+		if poly.Size() < 4 {
+			continue
+		}
+
+		// polyの中から4つ選ぶ
+		// 4つの点の組み合わせを全て試す
+		indices := make([]int, poly.Size())
+		for j := 0; j < poly.Size(); j++ {
+			indices[j] = j
+		}
+		errors := make([]float64, 0) // 4つの点の組み合わせごとの誤差
+		combs := make([][]int, 0)    // 4つの点の組み合わせ
+		for comb := range combinations(indices, 4, 1) {
+			combs = append(combs, comb)
+		}
+		for _, comb := range combs {
+			quadrilateral := gocv.NewPointVector()
+			for _, c := range comb {
+				quadrilateral.Append(poly.At(c))
+			}
+
+			lineLens := make([]float64, 4)
+			for j := 0; j < 4; j++ {
+				lineLens[j] = math.Sqrt(math.Pow(float64(quadrilateral.At(j).X-quadrilateral.At((j+1)%4).X), 2) + math.Pow(float64(quadrilateral.At(j).Y-quadrilateral.At((j+1)%4).Y), 2))
+			}
+			base := math.Sqrt(gocv.ContourArea(quadrilateral))
+			score := 0.0
+			for _, l := range lineLens {
+				score += math.Pow(math.Abs(1-l/base), 2)
+			}
+			errors = append(errors, score)
+		}
+
+		minError := errors[0] // 4つの点の組み合わせごとの誤差の最小値
+		for _, e := range errors {
+			if e < minError {
+				minError = e
+			}
+		}
+
+		if minError < pMinError {
+			pMinError = minError
+			selectedIndex = i
+		}
+	}
+
+	// gocv.DrawContoursWithParams(&src, polies, selectedIndex, color.RGBA{255, 0, 0, 255}, 1, gocv.LineAA, hierarchy, 0, image.Pt(0, 0))
+
+	dst := gocv.NewPointVector()
+	defer dst.Close()
+
+	lineLensSum := 0.0
+	for j := 0; j < 4; j++ {
+		lineLensSum += math.Sqrt(math.Pow(float64(polies.At(selectedIndex).At(j).X-polies.At(selectedIndex).At((j+1)%4).X), 2) + math.Pow(float64(polies.At(selectedIndex).At(j).Y-polies.At(selectedIndex).At((j+1)%4).Y), 2))
+	}
+	size := int(lineLensSum / 4)
+	dst.Append(image.Pt(0, 0))
+	dst.Append(image.Pt(0, size))
+	dst.Append(image.Pt(size, size))
+	dst.Append(image.Pt(size, 0))
+
+	quadrilateral := gocv.NewMat()
+	defer quadrilateral.Close()
+
 	warp := gocv.NewMat()
 	defer warp.Close()
 
-	min_area := float64(src.Rows()*src.Cols()) * 0.2
-	max_level := 0
-	max_area := 0.0
-	for i := 0; i < contours.Size(); i++ {
-		area := gocv.ContourArea(contours.At(i))
-		if area < min_area {
-			continue
-		}
+	gocv.WarpPerspective(src, &warp, gocv.GetPerspectiveTransform(polies.At(selectedIndex), dst), image.Pt(src.Cols(), src.Rows()))
 
-		arcLen := gocv.ArcLength(contours.At(i), true)
-		approx := gocv.ApproxPolyDP(contours.At(i), 0.02*arcLen, true)
-		if approx.Size() != 4 {
-			continue
-		}
-
-		if area > max_area {
-			max_area = area
-		}
-	}
-
-	trimmed := gocv.NewMat()
+	trimmed := warp.Region(image.Rect(0, 0, size, size))
 	defer trimmed.Close()
 
-	for i := 0; i < contours.Size(); i++ {
-		area := gocv.ContourArea(contours.At(i))
-		if area < max_area {
-			continue
-		}
-
-		arcLen := gocv.ArcLength(contours.At(i), true)
-		approx := gocv.ApproxPolyDP(contours.At(i), 0.02*arcLen, true)
-		if approx.Size() != 4 {
-			continue
-		}
-
-		dst := gocv.NewPointVector()
-		// 300x300
-		// 反転を修正
-		dst.Append(image.Pt(0, 0))
-		dst.Append(image.Pt(300, 0))
-		dst.Append(image.Pt(300, 300))
-		dst.Append(image.Pt(0, 300))
-
-		defer dst.Close()
-		// gocv.DrawContoursWithParams(&src, contours, i, color.RGBA{255, 0, 0, 255}, 1, gocv.LineAA, hierarchy, max_level, image.Pt(0, 0))
-		gocv.WarpPerspective(src, &trimmed, gocv.GetPerspectiveTransform(approx, dst), image.Pt(300, 300))
-		// 左右反転
-		gocv.Flip(trimmed, &trimmed, 1)
-
-		perspective := gocv.GetPerspectiveTransform(approx, dst)
-		gocv.WarpPerspective(src, &warp, perspective, image.Pt(src.Cols(), src.Rows()))
-
-		gocv.DrawContoursWithParams(&src, contours, i, color.RGBA{255, 0, 0, 255}, 1, gocv.LineAA, hierarchy, max_level, image.Pt(0, 0))
-		break
-	}
+	gocv.Resize(trimmed, &trimmed, image.Pt(500, 500), 0, 0, gocv.InterpolationCubic)
 
 	win := gocv.NewWindow("sudoku")
 	defer win.Close()
-	win.IMShow(src)
+	win.IMShow(trimmed)
 	win.WaitKey(0)
+}
 
-	// edges := gocv.NewMat()
-	// defer edges.Close()
-	// gocv.Canny(gray, &edges, 50, 150)
-
-	// lines := gocv.NewMat()
-	// defer lines.Close()
-	// gocv.HoughLinesPWithParams(edges, &lines, 1, math.Pi/180, 80, 50, 5)
-
-	// contours := gocv.FindContours(edges, gocv.RetrievalList, gocv.ChainApproxSimple)
-	// minArea := float64(src.Rows()*src.Cols()) * 0.2
-	// lergeContours := gocv.NewPointsVector()
-	// for i := 0; i < contours.Size(); i++ {
-	// 	cnt := contours.At(i)
-	// 	if gocv.ContourArea(cnt) > minArea {
-	// 		lergeContours.Append(cnt)
-	// 	}
-	// }
-
-	// hulls := []gocv.Mat{}
-	// for i := 0; i < lergeContours.Size(); i++ {
-	// 	cnt := lergeContours.At(i)
-	// 	hull := gocv.NewMat()
-	// 	gocv.ConvexHull(cnt, &hull, true, false)
-	// 	hulls = append(hulls, hull)
-	// }
-
-	// blank := gocv.NewMatWithSize(src.Rows(), src.Cols(), gocv.MatTypeCV8U)
-	// polies := gocv.NewPointsVector()
-	// for _, hull := range hulls {
-	// 	pv := gocv.NewPointVectorFromMat(hull)
-	// 	arcLen := gocv.ArcLength(pv, true)
-	// 	poly := gocv.ApproxPolyDP(pv, 0.02*arcLen, true)
-	// 	gocv.DrawContours(&blank, gocv.NewPointsVectorFromPoints([][]image.Point{poly.ToPoints()}), -1, color.RGBA{0, 255, 0, 255}, 1)
-	// 	polies.Append(poly)
-	// }
-
-	// win := gocv.NewWindow("sudoku")
-	// defer win.Close()
-
-	// win.IMShow(blank)
-	// win.WaitKey(0)
+func combinations(list []int, choose, buf int) (c chan []int) {
+	c = make(chan []int, buf)
+	go func() {
+		defer close(c)
+		switch {
+		case choose == 0:
+			c <- []int{}
+		case choose == len(list):
+			c <- list
+		case len(list) < choose:
+			return
+		default:
+			for i := 0; i < len(list); i++ {
+				for subComb := range combinations(list[i+1:], choose-1, buf) {
+					c <- append([]int{list[i]}, subComb...)
+				}
+			}
+		}
+	}()
+	return
 }
