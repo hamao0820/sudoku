@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	src := gocv.IMRead("sample.png", gocv.IMReadColor)
+	src := gocv.IMRead("sample3.png", gocv.IMReadColor)
 	defer src.Close()
 
 	detect.FitSize(&src, 500, 500)
@@ -113,7 +113,7 @@ func main() {
 		}
 	}
 
-	poly := polies.At(selectedIndex)
+	poly := fixClockwise(polies.At(selectedIndex))
 
 	// gocv.DrawContoursWithParams(&src, polies, selectedIndex, color.RGBA{255, 0, 0, 255}, 1, gocv.LineAA, hierarchy, 0, image.Pt(0, 0))
 
@@ -148,6 +148,38 @@ func main() {
 	defer win.Close()
 	win.IMShow(trimmed)
 	win.WaitKey(0)
+}
+
+func fixClockwise(poly gocv.PointVector) gocv.PointVector {
+	points := poly.ToPoints()
+	// 重心を求める
+	center := image.Pt(0, 0)
+	for _, p := range points {
+		center.X += p.X
+		center.Y += p.Y
+	}
+	center.X /= len(points)
+	center.Y /= len(points)
+
+	// 重心からの角度を求める
+	angles := make([]float64, len(points))
+	for i, p := range points {
+		angles[i] = math.Atan2(float64(p.Y-center.Y), float64(p.X-center.X))
+	}
+
+	// 角度でソート
+	for i := 0; i < len(points); i++ {
+		for j := i + 1; j < len(points); j++ {
+			if angles[i] < angles[j] {
+				angles[i], angles[j] = angles[j], angles[i]
+				points[i], points[j] = points[j], points[i]
+			}
+		}
+	}
+
+	points = append(points[3:], points[:3]...) // 0, 1, 2, 3 -> 3, 0, 1, 2
+
+	return gocv.NewPointVectorFromPoints(points)
 }
 
 func combinations(list []int, choose, buf int) (c chan []int) {
