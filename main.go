@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"math"
 
@@ -112,6 +113,8 @@ func main() {
 		}
 	}
 
+	poly := polies.At(selectedIndex)
+
 	// gocv.DrawContoursWithParams(&src, polies, selectedIndex, color.RGBA{255, 0, 0, 255}, 1, gocv.LineAA, hierarchy, 0, image.Pt(0, 0))
 
 	dst := gocv.NewPointVector()
@@ -119,7 +122,7 @@ func main() {
 
 	lineLensSum := 0.0
 	for j := 0; j < 4; j++ {
-		lineLensSum += math.Sqrt(math.Pow(float64(polies.At(selectedIndex).At(j).X-polies.At(selectedIndex).At((j+1)%4).X), 2) + math.Pow(float64(polies.At(selectedIndex).At(j).Y-polies.At(selectedIndex).At((j+1)%4).Y), 2))
+		lineLensSum += math.Sqrt(math.Pow(float64(poly.At(j).X-poly.At((j+1)%4).X), 2) + math.Pow(float64(poly.At(j).Y-poly.At((j+1)%4).Y), 2))
 	}
 	size := int(lineLensSum / 4)
 	dst.Append(image.Pt(0, 0))
@@ -133,7 +136,8 @@ func main() {
 	warp := gocv.NewMat()
 	defer warp.Close()
 
-	gocv.WarpPerspective(src, &warp, gocv.GetPerspectiveTransform(polies.At(selectedIndex), dst), image.Pt(src.Cols(), src.Rows()))
+	fmt.Println(poly.ToPoints())
+	gocv.WarpPerspective(src, &warp, gocv.GetPerspectiveTransform(poly, dst), image.Pt(src.Cols(), src.Rows()))
 
 	trimmed := warp.Region(image.Rect(0, 0, size, size))
 	defer trimmed.Close()
