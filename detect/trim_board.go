@@ -49,6 +49,9 @@ func GetSquare(img gocv.Mat) (gocv.Mat, error) {
 	}
 
 	poly := fixClockwise(polies.At(selectedIndex))
+	if poly.Size() != 4 {
+		return gocv.NewMat(), fmt.Errorf("not square")
+	}
 
 	warp, size := getSquareWarpPerspectiveTransformed(img, poly)
 
