@@ -60,6 +60,19 @@ func GetSquare(img gocv.Mat) (gocv.Mat, error) {
 		return gocv.NewMat(), fmt.Errorf("not square")
 	}
 
+	padding := 1
+	points := poly.ToPoints()
+	points[0].X = min(img.Cols(), points[0].X+padding)
+	points[0].Y = min(img.Rows(), points[0].Y+padding)
+	points[1].X = min(img.Cols(), points[1].X+padding)
+	points[1].Y = max(0, points[1].Y-padding)
+	points[2].X = max(0, points[2].X-padding)
+	points[2].Y = max(0, points[2].Y-padding)
+	points[3].X = max(0, points[3].X-padding)
+	points[3].Y = min(img.Rows(), points[3].Y+padding)
+
+	poly = gocv.NewPointVectorFromPoints(points)
+
 	warp, size := getSquareWarpPerspectiveTransformed(img, poly)
 
 	square := warp.Region(image.Rect(0, 0, size, size))
@@ -90,4 +103,18 @@ func getSquareWarpPerspectiveTransformed(img gocv.Mat, poly gocv.PointVector) (g
 
 	gocv.WarpPerspective(img, &warp, perspective, image.Pt(img.Cols(), img.Rows()))
 	return warp, size
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
