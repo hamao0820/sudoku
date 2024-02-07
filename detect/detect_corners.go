@@ -13,6 +13,12 @@ func FitSize(img *gocv.Mat, h, w int) {
 	gocv.Resize(*img, img, image.Point{}, f, f, gocv.InterpolationLinear)
 }
 
+func BilateralFilter(img gocv.Mat) gocv.Mat {
+	filtered := gocv.NewMat()
+	gocv.BilateralFilter(img, &filtered, 9, 75, 75)
+	return filtered
+}
+
 func ToGray(img gocv.Mat) gocv.Mat {
 	gray := gocv.NewMat()
 	gocv.CvtColor(img, &gray, gocv.ColorBGRToGray)

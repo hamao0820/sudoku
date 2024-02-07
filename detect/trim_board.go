@@ -24,7 +24,10 @@ import (
 func GetSquare(img gocv.Mat) (gocv.Mat, error) {
 	FitSize(&img, 500, 500)
 
-	gray := ToGray(img)
+	filtered := BilateralFilter(img)
+	defer filtered.Close()
+
+	gray := ToGray(filtered)
 	defer gray.Close()
 
 	edge := FindEdge(gray)
