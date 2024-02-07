@@ -8,18 +8,18 @@ import (
 	"gocv.io/x/gocv"
 )
 
-func GetCells(img gocv.Mat) [][]gocv.Mat {
-	dx := float64(img.Cols()) / 9
-	dy := float64(img.Rows()) / 9
-	cells := make([][]gocv.Mat, 9)
-	for y := 0; y < 9; y++ {
-		cells[y] = make([]gocv.Mat, 9)
-		for x := 0; x < 9; x++ {
-			cells[y][x] = img.Region(image.Rect(int(float64(x)*dx), int(float64(y)*dy), int(float64(x+1)*dx), int(float64(y+1)*dy)))
-		}
-	}
-	return cells
-}
+// func GetCells(img gocv.Mat) [][]gocv.Mat {
+// 	dx := float64(img.Cols()) / 9
+// 	dy := float64(img.Rows()) / 9
+// 	cells := make([][]gocv.Mat, 9)
+// 	for y := 0; y < 9; y++ {
+// 		cells[y] = make([]gocv.Mat, 9)
+// 		for x := 0; x < 9; x++ {
+// 			cells[y][x] = img.Region(image.Rect(int(float64(x)*dx), int(float64(y)*dy), int(float64(x+1)*dx), int(float64(y+1)*dy)))
+// 		}
+// 	}
+// 	return cells
+// }
 
 func GetSquare(img gocv.Mat) (gocv.Mat, error) {
 	FitSize(&img, 500, 500)
