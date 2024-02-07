@@ -42,10 +42,14 @@ func GetSquare(img gocv.Mat) (gocv.Mat, error) {
 	defer polies.Close()
 
 	// 正方形に近いものを選ぶ
-	selectedIndex, _ := SelectNearestSquareIndex(polies)
+	selectedIndex, errorScore := SelectNearestSquareIndex(polies)
 
 	if selectedIndex == -1 {
 		return gocv.NewMat(), fmt.Errorf("not found")
+	}
+
+	if errorScore > 0.1 {
+		return gocv.NewMat(), fmt.Errorf("not square")
 	}
 
 	poly := fixClockwise(polies.At(selectedIndex))
