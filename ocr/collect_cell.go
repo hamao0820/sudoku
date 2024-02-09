@@ -58,7 +58,7 @@ func CollectCell() {
 			}
 			defer img.Close()
 
-			cells := splitCells(img)
+			cells := SplitCells(img)
 			for y := 0; y < 9; y++ {
 				for x := 0; x < 9; x++ {
 					cell := cells[y][x]
@@ -77,7 +77,7 @@ func CollectCell() {
 	}
 }
 
-func splitCells(square gocv.Mat) [][]gocv.Mat {
+func SplitCells(square gocv.Mat) [][]gocv.Mat {
 	cells := make([][]gocv.Mat, 9)
 	dx := float64(square.Cols()) / 9
 	dy := float64(square.Rows()) / 9
