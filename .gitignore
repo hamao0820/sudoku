@@ -1,3 +1,4 @@
 .DS_Store
 ocr/data
 ocr/python/model
+ocr/python/__pycache__

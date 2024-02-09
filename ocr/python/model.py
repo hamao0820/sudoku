@@ -6,20 +6,17 @@ class OCRModel(nn.Module):
     def __init__(self):
         super(OCRModel, self).__init__()
         # input : BS x 1 x 64 x 64
-        self.res_block1 = self._make_res_block(1, 16, 3, 1, 1)
-        # input : BS x 16 x 64 x 64
+        self.res_block1 = self._make_res_block(1, 8, 3, 1, 1)
         self.max_pool1 = nn.MaxPool2d(2, 2)
-        # input : BS x 16 x 32 x 32
-        self.res_block2 = self._make_res_block(16, 32, 3, 1, 1)
-        # input : BS x 32 x 32 x 32
+        # input : BS x 8 x 32 x 32
+        self.res_block2 = self._make_res_block(8, 16, 3, 1, 1)
         self.max_pool2 = nn.MaxPool2d(2, 2)
-        # input : BS x 32 x 16 x 16
-        self.res_block3 = self._make_res_block(32, 64, 3, 1, 1)
-        # input : BS x 64 x 16 x 16
+        # input : BS x 16 x 16 x 16
+        self.res_block3 = self._make_res_block(16, 32, 3, 1, 1)
         self.max_pool3 = nn.MaxPool2d(2, 2)
-        # input : BS x 64 x 8 x 8
-        self.fc1 = nn.Linear(64 * 8 * 8, 100)
-        self.fc2 = nn.Linear(100, 10)
+        # input : BS x 32 x 8 x 8
+        self.fc1 = nn.Linear(32 * 8 * 8, 128)
+        self.fc2 = nn.Linear(128, 10)
 
         self.dropout = nn.Dropout(0.5)
 

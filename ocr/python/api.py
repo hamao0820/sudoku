@@ -9,7 +9,7 @@ from model import OCRModel
 
 # load the model
 model = OCRModel()
-model.load_state_dict(torch.load("ocr/python/model/model2_9989.pth"))
+model.load_state_dict(torch.load("ocr/python/model/model.pth"))
 
 app = FastAPI()
 

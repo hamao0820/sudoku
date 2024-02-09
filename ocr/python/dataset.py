@@ -8,9 +8,17 @@ from PIL import Image
 
 
 class OCRDataset(Dataset):
-    def __init__(self, transform=None):
+    def __init__(self, mode: str, transform=None):
         self.data = []
-        dirs = glob("ocr/data/cells/**")
+        if mode == "train":
+            dirs = glob("ocr/data/train/train/**")
+        elif mode == "valid":
+            dirs = glob("ocr/data/train/valid/**")
+        elif mode == "test":
+            dirs = glob("ocr/data/train/test/**")
+        else:
+            raise ValueError("mode must be one of 'train', 'valid', or 'test'")
+
         for d in dirs:
             label = os.path.basename(d)
             files = glob(d + "/*.png")
@@ -29,22 +37,6 @@ class OCRDataset(Dataset):
         # label to one-hot encoding
         label = torch.zeros(10)
         label[int(item["label"])] = 1
-        return img, label
-
-
-class Subset(OCRDataset):
-    def __init__(self, dataset, indices, transform=None):
-        self.data = dataset
-        self.transform = transform
-        self.indices = indices
-
-    def __len__(self) -> int:
-        return len(self.indices)
-
-    def __getitem__(self, idx) -> (torch.Tensor, int):
-        img, label = self.data[self.indices[idx]]
-        if self.transform:
-            img = self.transform(img)
         return img, label
 
 
