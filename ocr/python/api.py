@@ -10,6 +10,9 @@ from model import OCRModel
 # load the model
 model = OCRModel()
 model.load_state_dict(torch.load("ocr/python/model/model.pth"))
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+model.to(device)
+model.eval()
 
 app = FastAPI()
 
@@ -17,8 +20,6 @@ trans = transforms.Compose(
     [
         transforms.Resize((64, 64)),
         transforms.ToTensor(),
-        transforms.GaussianBlur(3),
-        transforms.Normalize((0.5,), (0.5,)),
     ]
 )
 
@@ -35,8 +36,11 @@ async def ocr(req: OCRReq):
     img = trans(img)
     # add a batch dimension
     img = img.unsqueeze(0)
+    # send the tensor to the device
+    img = img.to(device)
     # run the model
-    out = model(img)
+    with torch.no_grad():
+        out = model(img)
     # get the predicted class
     pred = out.argmax(dim=1).item()
     # return the prediction

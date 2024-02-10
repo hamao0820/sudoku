@@ -63,7 +63,7 @@ func CollectSquareFromCamera(id SudokuID) {
 
 		origin := gocv.NewMat()
 		img.CopyTo(&origin)
-		if drawSquare(&img) {
+		if DrawSquare(&img) {
 			frame++
 			if frame >= 3 {
 				square, err := detect.GetSquare(origin)
@@ -86,7 +86,7 @@ func CollectSquareFromCamera(id SudokuID) {
 	}
 }
 
-func drawSquare(img *gocv.Mat) bool {
+func DrawSquare(img *gocv.Mat) bool {
 	detect.FitSize(img, 500, 500)
 
 	gray := detect.ToGray(*img)

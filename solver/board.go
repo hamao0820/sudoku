@@ -110,22 +110,22 @@ func (b *Board) Verify() bool {
 }
 
 func (b *Board) String() string {
-	str := ""
+	s := ""
 	for y := 0; y < 9; y++ {
+		if y%3 == 0 {
+			s += "|-------+-------+-------|\n"
+		}
 		for x := 0; x < 9; x++ {
-			if b[y][x] != 0 {
-				str += fmt.Sprint(b[y][x])
-			} else {
-				str += "･"
+			if x == 0 {
+				s += "| "
 			}
-			if x == 2 || x == 5 {
-				str += " "
+			s += fmt.Sprintf("%d ", b[y][x])
+			if x%3 == 2 {
+				s += "| "
 			}
 		}
-		str += "\n"
-		if y == 2 || y == 5 {
-			str += "\n"
-		}
+		s += "\n"
 	}
-	return str
+	s += "|-------+-------+-------|\n"
+	return s
 }
