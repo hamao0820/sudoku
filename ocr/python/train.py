@@ -12,21 +12,20 @@ from transform import RandomLine
 
 def train():
     # device
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    print(f"device: {device}")
 
     # dataset
     test_transforms = transforms.Compose(
         [
-            transforms.Resize((64, 64)),
+            transforms.Resize((224, 224)),
             transforms.ToTensor(),
         ]
     )
     augment_transform = transforms.Compose(
         [
-            transforms.ToTensor(),
             RandomLine(p=0.2),
-            transforms.ToPILImage(),
-            transforms.Resize((64, 64)),
+            transforms.Resize((224, 224)),
             transforms.RandomChoice(
                 [
                     transforms.RandomAffine(degrees=5, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=5),
@@ -35,7 +34,7 @@ def train():
             ),
             transforms.RandomResizedCrop(64, scale=(0.8, 1.0), ratio=(0.9, 1.1)),
             transforms.ToTensor(),
-        ]
+        ],
     )
 
     train_ds = OCRDataset("train", transform=augment_transform)

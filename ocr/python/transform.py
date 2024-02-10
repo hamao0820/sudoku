@@ -1,7 +1,10 @@
+from random import random
+
 import torch
+from PIL import ImageDraw
 
 
-# 画像の四隅にランダムで黒い線を引く
+# 画像の端の方に線を引く
 class RandomLine(torch.nn.Module):
     def __init__(self, p=0.5, thickness=1):
         super(RandomLine, self).__init__()
@@ -9,20 +12,35 @@ class RandomLine(torch.nn.Module):
         self.thickness = thickness
 
     def forward(self, x):
-        # 線の太さ
-        # 右端の線
+        draw = ImageDraw.Draw(x)
+        width, height = x.size
         if torch.rand(1) < self.p:
-            x[:, :, -self.thickness :] = 0
-        # 下端の線
-        if torch.rand(1) < self.p:
-            x[:, -self.thickness :, :] = 0
-        # 左端の線
-        if torch.rand(1) < self.p:
-            x[:, :, : self.thickness] = 0
-        # 上端の線
-        if torch.rand(1) < self.p:
-            x[:, : self.thickness, :] = 0
+            x0 = random() * width / 5
+            x1 = random() * width / 5
+            y0 = random() * height / 5
+            y1 = random() * height / 5 + height * 4 / 5
+            draw.line((x0, y0, x1, y1), fill=0, width=self.thickness)
 
+        if torch.rand(1) < self.p:
+            x0 = random() * width / 5 + width * 4 / 5
+            x1 = random() * width / 5 + width * 4 / 5
+            y0 = random() * height / 5
+            y1 = random() * height / 5 + height * 4 / 5
+            draw.line((x0, y0, x1, y1), fill=0, width=self.thickness)
+
+        if torch.rand(1) < self.p:
+            x0 = random() * width / 5
+            x1 = random() * width / 5 + width * 4 / 5
+            y0 = random() * height / 5
+            y1 = random() * height / 5
+            draw.line((x0, y0, x1, y1), fill=0, width=self.thickness)
+
+        if torch.rand(1) < self.p:
+            x0 = random() * width / 5
+            x1 = random() * width / 5 + width * 4 / 5
+            y0 = random() * height / 5 + height * 4 / 5
+            y1 = random() * height / 5 + height * 4 / 5
+            draw.line((x0, y0, x1, y1), fill=0, width=self.thickness)
         return x
 
 
@@ -31,6 +49,5 @@ if __name__ == "__main__":
     from PIL import Image
 
     img = Image.open("ocr/data/train/train/1/1.png")
-    img.show()
-    trans = transforms.Compose([transforms.ToTensor(), RandomLine(p=0.5), transforms.ToPILImage()])
+    trans = transforms.Compose([RandomLine(p=0.2)])
     trans(img).show()
