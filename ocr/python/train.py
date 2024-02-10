@@ -18,14 +18,14 @@ def train():
     # dataset
     test_transforms = transforms.Compose(
         [
-            transforms.Resize((224, 224)),
+            transforms.Resize((64, 64)),
             transforms.ToTensor(),
         ]
     )
     augment_transform = transforms.Compose(
         [
             RandomLine(p=0.2),
-            transforms.Resize((224, 224)),
+            transforms.Resize((64, 64)),
             transforms.RandomChoice(
                 [
                     transforms.RandomAffine(degrees=5, translate=(0.1, 0.1), scale=(0.9, 1.1), shear=5),
@@ -39,8 +39,8 @@ def train():
 
     train_ds = OCRDataset("train", transform=augment_transform)
     val_ds = OCRDataset("valid", transform=test_transforms)
-    train_dl = DataLoader(train_ds, batch_size=64, shuffle=True)
-    val_dl = DataLoader(val_ds, batch_size=64, shuffle=True)
+    train_dl = DataLoader(train_ds, batch_size=128, shuffle=True)
+    val_dl = DataLoader(val_ds, batch_size=128, shuffle=True)
 
     # model
     model = OCRModel()
