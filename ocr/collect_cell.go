@@ -51,7 +51,7 @@ func CollectCell() {
 			panic(err)
 		}
 		for _, image := range images {
-			img := gocv.IMRead(image, gocv.IMReadGrayScale)
+			img := gocv.IMRead(image, gocv.IMReadColor)
 			if img.Empty() {
 				fmt.Println("Error reading image from: ", image)
 				continue
