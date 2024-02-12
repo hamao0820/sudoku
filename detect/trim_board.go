@@ -3,23 +3,44 @@ package detect
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"math"
 
 	"gocv.io/x/gocv"
 )
 
-// func GetCells(img gocv.Mat) [][]gocv.Mat {
-// 	dx := float64(img.Cols()) / 9
-// 	dy := float64(img.Rows()) / 9
-// 	cells := make([][]gocv.Mat, 9)
-// 	for y := 0; y < 9; y++ {
-// 		cells[y] = make([]gocv.Mat, 9)
-// 		for x := 0; x < 9; x++ {
-// 			cells[y][x] = img.Region(image.Rect(int(float64(x)*dx), int(float64(y)*dy), int(float64(x+1)*dx), int(float64(y+1)*dy)))
-// 		}
-// 	}
-// 	return cells
-// }
+func DrawSquare(img *gocv.Mat) bool {
+	FitSize(img, 500, 500)
+
+	gray := ToGray(*img)
+	defer gray.Close()
+
+	edge := FindEdge(gray)
+	defer edge.Close()
+
+	contours, _ := FindContours(edge)
+	defer contours.Close()
+
+	min_area := float64(img.Rows()*img.Cols()) * 0.2
+	largeContours := FilterContours(contours, min_area)
+
+	convexes := GetConvexes(largeContours)
+
+	polies := GetPolygons(largeContours, convexes)
+	defer polies.Close()
+
+	// 正方形に近いものを選ぶ
+	selectedIndex, _ := SelectNearestSquareIndex(polies)
+	if selectedIndex == -1 {
+		return false
+	}
+	if polies.At(selectedIndex).Size() != 4 {
+		return false
+	}
+
+	gocv.DrawContours(img, polies, selectedIndex, color.RGBA{255, 0, 0, 255}, 3)
+	return true
+}
 
 func GetSquare(img gocv.Mat) (gocv.Mat, error) {
 	FitSize(&img, 500, 500)

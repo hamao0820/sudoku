@@ -5,11 +5,10 @@ from PIL import Image
 from torchvision import transforms
 from io import BytesIO
 import torch
-from model import OCRModel
+
 
 # load the model
-model = OCRModel()
-model.load_state_dict(torch.load("ocr/python/model/model.pth"))
+model = torch.load("ocr/python/model/model.pt")
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 model.to(device)
 model.eval()

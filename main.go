@@ -26,12 +26,12 @@ func main() {
 		webcam.Read(&original)
 
 		display := original.Clone()
-		if ocr.DrawSquare(&display) {
+		if detect.DrawSquare(&display) {
 			square, err := detect.GetSquare(original)
 			if err == nil {
 				frame++
 				if frame >= 3 {
-					cells := ocr.SplitCells(square)
+					cells := detect.SplitCell(square)
 					for y := 0; y < 9; y++ {
 						cellDigits[y] = [9]int{}
 						for x := 0; x < 9; x++ {
